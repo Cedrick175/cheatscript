@@ -1,0 +1,178 @@
+-- Aimbot Script (LocalScript)
+-- Place this script in StarterPlayerScripts
+
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local AIMBOT_KEY = Enum.KeyCode.E -- Key to activate aimbot
+local AIM_SMOOTHNESS = 0.1 -- Lower value for faster snap (0 means instant snap)
+
+local function findTarget()
+    local closestTarget = nil
+    local shortestDistance = math.huge
+
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        return nil
+    end
+
+    local localRootPart = LocalPlayer.Character.HumanoidRootPart.CFrame.Position
+    local localTeam = LocalPlayer.Team
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") then
+            -- Check if the player is on an opposing team (assuming teams are not nil and different)
+            if localTeam and player.Team and player.Team ~= localTeam then
+                local targetHead = player.Character.Head.CFrame.Position
+                local distance = (localRootPart - targetHead).Magnitude
+
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    closestTarget = player.Character.Head
+                end
+            end
+        end
+    end
+    return closestTarget
+end
+
+local aimbotActive = false
+
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    if input.KeyCode == AIMBOT_KEY and not gameProcessedEvent then
+        aimbotActive = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
+    if input.KeyCode == AIMBOT_KEY then
+        aimbotActive = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function(deltaTime)
+    if aimbotActive and LocalPlayer.Character and Camera then
+        local targetHead = findTarget()
+        if targetHead then
+            -- Calculate the direction from the camera to the target's head
+            local lookAtVector = (targetHead.CFrame.Position - Camera.CFrame.Position).Unit
+
+            -- Calculate the target CFrame for the camera
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + lookAtVector)
+
+            -- Smoothly interpolate the camera's CFrame
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, AIM_SMOOTHNESS * deltaTime * 60) -- Multiply by 60 for consistent speed regardless of framerate
+        end
+    end
+end)
+
+-- ESP Script (LocalScript)
+-- Place this script in StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui") -- Use CoreGui to try and bypass some custom UI setups, but still local client-side.
+
+local LocalPlayer = Players.LocalPlayer
+
+local espIndicators = {} -- Table to hold the BillboardGuis
+
+local function createEspIndicator(player)
+    local billBoardGui = Instance.new("BillboardGui")
+    billBoardGui.Size = UDim2.new(0, 100, 0, 50)
+    billBoardGui.StudsOffset = Vector3.new(0, 2, 0) -- Offset above the head
+    billBoardGui.AlwaysOnTop = true -- This makes it visible through walls
+    billBoardGui.ExtentsOffset = Vector3.new(0, 0, 0) -- Prevent clipping issues
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 0.8
+    textLabel.TextColor3 = Color3.new(1, 1, 1) -- White text by default
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 16
+    textLabel.Parent = billBoardGui
+
+    billBoardGui.Parent = player.Character or workspace -- Parent to character or workspace initially
+
+    return billBoardGui, textLabel
+end
+
+local function updateEspIndicators()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local indicatorData = espIndicators[player.UserId]
+                if not indicatorData then
+                    local billBoardGui, textLabel = createEspIndicator(player)
+                    indicatorData = {BillboardGui = billBoardGui, TextLabel = textLabel}
+                    espIndicators[player.UserId] = indicatorData
+                end
+
+                local billBoardGui = indicatorData.BillboardGui
+                local textLabel = indicatorData.TextLabel
+
+                -- Update parent of the BillboardGui to the player's head for accurate tracking
+                billBoardGui.Adornee = player.Character.Head
+
+                -- Determine color based on team
+                local localTeam = LocalPlayer.Team
+                local targetTeam = player.Team
+
+                if localTeam and targetTeam then
+                    if targetTeam == localTeam then
+                        textLabel.TextColor3 = Color3.fromRGB(85, 255, 0) -- Green for friendly
+                        textLabel.Text = player.Name .. " (Friendly)"
+                    else
+                        textLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red for enemy
+                        textLabel.Text = player.Name .. " (Enemy)"
+                    end
+                else
+                    -- If teams are not set, just show a default color
+                    textLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Yellow
+                    textLabel.Text = player.Name .. " (No Team)"
+                end
+            elseif espIndicators[player.UserId] then
+                -- Player character doesn't exist, remove indicator
+                espIndicators[player.UserId].BillboardGui:Destroy()
+                espIndicators[player.UserId] = nil
+            end
+        elseif espIndicators[player.UserId] then
+            -- It's the local player, remove their indicator if somehow created
+            espIndicators[player.UserId].BillboardGui:Destroy()
+            espIndicators[player.UserId] = nil
+        end
+    end
+
+    -- Clean up indicators for players who have left
+    for userId, indicatorData in pairs(espIndicators) do
+        if not Players:GetPlayerByUserId(userId) then
+            indicatorData.BillboardGui:Destroy()
+            espIndicators[userId] = nil
+        end
+    end
+end
+
+-- Initial setup for players already in game
+updateEspIndicators()
+
+-- Connect to player added/removed events
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(char)
+        -- Wait a moment for character to fully load
+        task.wait(0.1)
+        updateEspIndicators()
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if espIndicators[player.UserId] then
+        espIndicators[player.UserId].BillboardGui:Destroy()
+        espIndicators[player.UserId] = nil
+    end
+end)
+
+-- Update ESP every frame
+RunService.RenderStepped:Connect(updateEspIndicators)

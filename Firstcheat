@@ -1,0 +1,96 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local toggle = false
+local adornments = {}
+
+-- GUI setup
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "ESP_ToggleGUI"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 150, 0, 50)
+frame.Position = UDim2.new(0, 20, 0, 20)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+
+local button = Instance.new("TextButton", frame)
+button.Size = UDim2.new(1, 0, 1, 0)
+button.Text = "ESP ON"
+button.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+
+-- Function to create red box outline (BoxHandleAdornment)
+local function createBox(part, parent)
+	local box = Instance.new("BoxHandleAdornment")
+	box.Size = part.Size
+	box.Adornee = part
+	box.AlwaysOnTop = true
+	box.ZIndex = 10
+	box.Color3 = Color3.new(1, 0, 0)
+	box.Transparency = 0
+	box.Name = "ESPBox"
+	box.Parent = parent
+	box.Visible = true
+	box.LineThickness = 0.05
+	return box
+end
+
+-- Add boxes to a player's character
+local function addESPToPlayerCharacter(character)
+	local boxes = {}
+	for _, part in ipairs(character:GetChildren()) do
+		if part:IsA("BasePart") then
+			local box = createBox(part, part)
+			table.insert(boxes, box)
+		end
+	end
+	adornments[character] = boxes
+end
+
+-- Remove all ESP boxes
+local function clearESP()
+	for _, boxes in pairs(adornments) do
+		for _, box in ipairs(boxes) do
+			if box and box.Parent then
+				box:Destroy()
+			end
+		end
+	end
+	adornments = {}
+end
+
+-- Main toggle function
+local function toggleESP()
+	toggle = not toggle
+	button.Text = toggle and "ESP OFF" or "ESP ON"
+	button.BackgroundColor3 = toggle and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100)
+
+	if toggle then
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player and other.Character then
+				addESPToPlayerCharacter(other.Character)
+			end
+			-- Listen to new characters
+			other.CharacterAdded:Connect(function(char)
+				if toggle then
+					task.wait(1)
+					addESPToPlayerCharacter(char)
+				end
+			end)
+		end
+
+		-- Handle new players
+		Players.PlayerAdded:Connect(function(p)
+			p.CharacterAdded:Connect(function(char)
+				if toggle then
+					task.wait(1)
+					addESPToPlayerCharacter(char)
+				end
+			end)
+		end)
+	else
+		clearESP()
+	end
+end
+
+button.MouseButton1Click:Connect(toggleESP)

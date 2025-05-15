@@ -1,98 +1,49 @@
---loadstring(game:HttpGet(""))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local Window = Rayfield:CreateWindow({
+   Name = "CHub",
+   Icon = 4483362458, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "CHub",
+   LoadingSubtitle = "by Cedrick",
+   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
 
-local toggle = false
-local adornments = {}
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
 
--- GUI setup
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "ESP_ToggleGUI"
-gui.ResetOnSpawn = false
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "CHub"
+   },
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 150, 0, 50)
-frame.Position = UDim2.new(0, 20, 0, 20)
-frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
 
-local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(1, 0, 1, 0)
-button.Text = "ESP ON"
-button.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Hello"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
 
--- Function to create red box outline (BoxHandleAdornment)
-local function createBox(part, parent)
-	local box = Instance.new("BoxHandleAdornment")
-	box.Size = part.Size
-	box.Adornee = part
-	box.AlwaysOnTop = true
-	box.ZIndex = 10
-	box.Color3 = Color3.new(1, 0, 0)
-	box.Transparency = 0
-	box.Name = "ESPBox"
-	box.Parent = parent
-	box.Visible = true
-	box.LineThickness = 0.05
-	return box
-end
+local Tab = Window:CreateTab("Player", 4483362458)
 
--- Add boxes to a player's character
-local function addESPToPlayerCharacter(character)
-	local boxes = {}
-	for _, part in ipairs(character:GetChildren()) do
-		if part:IsA("BasePart") then
-			local box = createBox(part, part)
-			table.insert(boxes, box)
-		end
-	end
-	adornments[character] = boxes
-end
-
--- Remove all ESP boxes
-local function clearESP()
-	for _, boxes in pairs(adornments) do
-		for _, box in ipairs(boxes) do
-			if box and box.Parent then
-				box:Destroy()
-			end
-		end
-	end
-	adornments = {}
-end
-
--- Main toggle function
-local function toggleESP()
-	toggle = not toggle
-	button.Text = toggle and "ESP OFF" or "ESP ON"
-	button.BackgroundColor3 = toggle and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100)
-
-	if toggle then
-		for _, other in ipairs(Players:GetPlayers()) do
-			if other ~= player and other.Character then
-				addESPToPlayerCharacter(other.Character)
-			end
-			-- Listen to new characters
-			other.CharacterAdded:Connect(function(char)
-				if toggle then
-					task.wait(1)
-					addESPToPlayerCharacter(char)
-				end
-			end)
-		end
-
-		-- Handle new players
-		Players.PlayerAdded:Connect(function(p)
-			p.CharacterAdded:Connect(function(char)
-				if toggle then
-					task.wait(1)
-					addESPToPlayerCharacter(char)
-				end
-			end)
-		end)
-	else
-		clearESP()
-	end
-end
-
-button.MouseButton1Click:Connect(toggleESP)
+local Slider = Tab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {10, 100},
+   Increment = 1,
+   Suffix = "Speed",
+   CurrentValue = 10,
+   Flag = "Slider1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Callback = function(Value)
+   game.Players.LocalPlayer.Character:SetAttribute("SpeedMultiplier", Value)
+   end,
+})

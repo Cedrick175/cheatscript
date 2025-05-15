@@ -42,8 +42,27 @@ local Slider = Tab:CreateSlider({
    Increment = 1,
    Suffix = "Speed",
    CurrentValue = 10,
-   Flag = "Slider1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Flag = "Slider1",
    Callback = function(Value)
-   game.Players.LocalPlayer.Character:SetAttribute("SpeedMultiplier", Value)
+      local character = game.Players.LocalPlayer.Character
+      if character and character:FindFirstChildOfClass("Humanoid") then
+         character:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
+      end
    end,
 })
+
+local Slider = Tab:CreateSlider({
+   Name = "Jump",
+   Range = {10, 100},
+   Increment = 1,
+   Suffix = "Jump",
+   CurrentValue = 10,
+   Flag = "Slider1",
+   Callback = function(Value)
+      local character = game.Players.LocalPlayer.Character
+      if character and character:FindFirstChildOfClass("Humanoid") then
+         character:FindFirstChildOfClass("Humanoid").JumpPower = Value
+      end
+   end,
+})
+

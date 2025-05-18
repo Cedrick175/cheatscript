@@ -579,7 +579,6 @@ local function startAutoPickup()
             if not autoPickupEnabled then break end
             if item:FindFirstChild("Pickup") then
                 Event:InvokeServer(item)
-                task.wait(0.1) -- Small delay between each item
             end
         end
     end)

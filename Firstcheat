@@ -1,4 +1,4 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/joeisa23/aFDDBGFDSDSD/main/obfuscated.lua"))()
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Cedrick175/cheatscript/blob/main/Survival%20Odyssey"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Cedrick175/cheatscript/refs/heads/main/SurvivalOdyssey.lua?token=GHSAT0AAAAAADEBVWALIDGGVDMKN63CRRNI2BJY7VQ"))()
 

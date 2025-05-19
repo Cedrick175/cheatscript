@@ -551,30 +551,19 @@ local AutoPickupSection = Tabs.Main:AddSection("Auto Pickup")
 local autoPickupEnabled = false
 local pickupConnection = nil
 
--- Function to pickup items
+-- Optimized Function to pickup items instantly
 local function startAutoPickup()
     if pickupConnection then
         pickupConnection:Disconnect()
         pickupConnection = nil
     end
 
-    local lastPickupTime = 0
-    local pickupDelay = 0 -- 1 second delay between pickups
     local Event = game:GetService("ReplicatedStorage").Events.Pickup
+    local itemsFolder = game:GetService("Workspace"):WaitForChild("Important"):WaitForChild("Items")
 
     pickupConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if not autoPickupEnabled then return end
-        
-        -- Check delay
-        local currentTime = tick()
-        if currentTime - lastPickupTime < pickupDelay then return end
-        lastPickupTime = currentTime
-        
-        -- Get all items
-        local itemsFolder = game:GetService("Workspace").Important.Items
-        if not itemsFolder then return end
-        
-        -- Process items with delay
+
         for _, item in ipairs(itemsFolder:GetChildren()) do
             if not autoPickupEnabled then break end
             if item:FindFirstChild("Pickup") then

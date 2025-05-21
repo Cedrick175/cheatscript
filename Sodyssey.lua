@@ -375,14 +375,14 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
     end
 end)
 
--- Auto Eat Section
-local AutoEatSection = Tabs.Main:AddSection("Auto Eat")
+-- Auto Heal Section
+local AutoHealSection = Tabs.Main:AddSection("Auto Heal")
 
--- Variables for auto eat
-local autoEatEnabled = false
-local minHungerThreshold = 50
+-- Variables
+local autoHealEnabled = false
+local minHealthThreshold = 50
 local checkInterval = 3
-local autoEatConnection = nil
+local autoHealConnection = nil
 local selectedFood = "Raw Meat"
 
 -- Available food types
@@ -393,14 +393,14 @@ local foodTypes = {
     "Cooked Meat",
     "Cooked Underworld Meat",
     "Cooked Morsel",
-    
+
     -- Raw Meats
     "Raw Meat",
     "Raw Morsel",
     "Raw Fish",
     "Raw Turkey Leg",
     "Raw Underworld Meat",
-    
+
     -- Fruits
     "Berry",
     "Strawberry",
@@ -423,13 +423,12 @@ local foodTypes = {
     "Cactus Bit"
 }
 
--- Sort food types alphabetically for easier selection
 table.sort(foodTypes)
 
 -- Food Selection Dropdown
-AutoEatSection:AddDropdown("FoodType", {
+AutoHealSection:AddDropdown("FoodType", {
     Title = "Food Type",
-    Description = "Select food to eat",
+    Description = "Select food to use for healing",
     Values = foodTypes,
     Default = 1,
     Multi = false,
@@ -438,53 +437,58 @@ AutoEatSection:AddDropdown("FoodType", {
     end
 })
 
--- Function to get current hunger
-local function getCurrentHunger()
+-- Function to get current health
+local function getCurrentHealth()
     local player = game.Players.LocalPlayer
-    local hungerLabel = player.PlayerGui.MainGui.Panels.Stats.List.Food.NumberLabel
-    return tonumber(hungerLabel.Text) or 100
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            return humanoid.Health
+        end
+    end
+    return 100
 end
 
 -- Function to find food slot
 local function findFoodSlot(foodName)
     local player = game.Players.LocalPlayer
     local inventory = player.PlayerGui.MainGui.RightPanel.Inventory.List
-    
-    -- Check slots 1-100
+
     for i = 1, 100 do
         local slot = inventory:FindFirstChild(tostring(i))
-        if slot and slot:FindFirstChild("title") and slot.title.Text == "Raw Meat" then -- Hardcoded to Raw Meat for now
+        if slot and slot:FindFirstChild("title") and slot.title.Text == foodName then
             return i
         end
     end
     return nil
 end
 
--- Function to eat food
+-- Function to use food
 local function eatFood(slot)
     local Event = game:GetService("ReplicatedStorage").Events.UseBagItem
     Event:FireServer(slot)
 end
 
--- Auto Eat Function
-local function startAutoEat()
-    if autoEatConnection then
-        autoEatConnection:Disconnect()
-        autoEatConnection = nil
+-- Auto Heal Function
+local function startAutoHeal()
+    if autoHealConnection then
+        autoHealConnection:Disconnect()
+        autoHealConnection = nil
     end
 
     local lastCheckTime = 0
-    
-    autoEatConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not autoEatEnabled then return end
-        
+
+    autoHealConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not autoHealEnabled then return end
+
         local currentTime = tick()
         if currentTime - lastCheckTime < checkInterval then return end
         lastCheckTime = currentTime
-        
-        local currentHunger = getCurrentHunger()
-        if currentHunger <= minHungerThreshold then
-            local foodSlot = findFoodSlot("Raw Meat")
+
+        local currentHealth = getCurrentHealth()
+        if currentHealth <= minHealthThreshold then
+            local foodSlot = findFoodSlot(selectedFood)
             if foodSlot then
                 eatFood(foodSlot)
             end
@@ -492,41 +496,41 @@ local function startAutoEat()
     end)
 end
 
--- Auto Eat Toggle
-AutoEatSection:AddToggle("AutoEat", {
-    Title = "Auto Eat",
-    Description = "Automatically eat when hungry",
+-- Toggle to enable/disable Auto Heal
+AutoHealSection:AddToggle("AutoHeal", {
+    Title = "Auto Heal",
+    Description = "Automatically eats to heal when health is low",
     Default = false,
     Callback = function(Value)
-        autoEatEnabled = Value
+        autoHealEnabled = Value
         if Value then
-            startAutoEat()
+            startAutoHeal()
         else
-            if autoEatConnection then
-                autoEatConnection:Disconnect()
-                autoEatConnection = nil
+            if autoHealConnection then
+                autoHealConnection:Disconnect()
+                autoHealConnection = nil
             end
         end
     end
 })
 
--- Hunger Threshold Slider
-AutoEatSection:AddSlider("HungerThreshold", {
-    Title = "Minimum Hunger",
-    Description = "Eat when hunger falls below this value",
+-- Health Threshold Slider
+AutoHealSection:AddSlider("HealthThreshold", {
+    Title = "Minimum Health",
+    Description = "Heal when health falls below this value",
     Default = 50,
     Min = 0,
     Max = 100,
     Rounding = 0,
     Callback = function(Value)
-        minHungerThreshold = Value
+        minHealthThreshold = Value
     end
 })
 
 -- Check Interval Slider
-AutoEatSection:AddSlider("CheckInterval", {
+AutoHealSection:AddSlider("CheckInterval", {
     Title = "Check Interval",
-    Description = "Seconds between hunger checks",
+    Description = "Seconds between health checks",
     Default = 3,
     Min = 1,
     Max = 10,
@@ -536,11 +540,11 @@ AutoEatSection:AddSlider("CheckInterval", {
     end
 })
 
--- Clean up on script end
+-- Clean up on character removal
 game.Players.LocalPlayer.CharacterRemoving:Connect(function()
-    if autoEatConnection then
-        autoEatConnection:Disconnect()
-        autoEatConnection = nil
+    if autoHealConnection then
+        autoHealConnection:Disconnect()
+        autoHealConnection = nil
     end
 end)
 

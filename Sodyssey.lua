@@ -1163,7 +1163,6 @@ CodeSection:AddButton({
     end
 })
 
--- Add Combat Tab
 local CombatSection = Tabs.Combat:AddSection("Combat")
 
 -- Function to find the closest player specifically for Bow Aimbot
@@ -1171,7 +1170,7 @@ local function getClosestPlayerForBow()
     local localPlayer = game.Players.LocalPlayer
     local closestPlayer = nil
     local shortestDistance = math.huge
-    
+
     for _, player in pairs(game.Players:GetPlayers()) do
         if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
             local distance = (localPlayer.Character.HumanoidRootPart.Position - player.Character.Head.Position).Magnitude
@@ -1181,7 +1180,7 @@ local function getClosestPlayerForBow()
             end
         end
     end
-    
+
     return closestPlayer
 end
 
@@ -1201,7 +1200,7 @@ local function startBowAimbot()
                         ["rootPartPosition"] = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
                     }
                 }
-                
+
                 game:GetService("ReplicatedStorage").Events.CreateProjectile:FireServer(unpack(args))
             end
             wait(0.01)
@@ -1222,10 +1221,10 @@ CombatSection:AddToggle("BowAimbot", {
     end
 })
 
--- Kill Aura
+-- Kill Aura Toggle
 CombatSection:AddToggle("KillAura", {
     Title = "Kill Aura",
-    Description = "Automatically attack nearest player",
+    Description = "Attack only when a player is nearby",
     Default = false,
     Callback = function(Value)
         killAuraEnabled = Value
@@ -1296,31 +1295,120 @@ AutoFarmSection:AddToggle("AutoPlant", {
     end
 })
 
--- Kill Aura Function
+local CombatSection = Tabs.Combat:AddSection("Combat")
+
+-- Kill Aura Toggle
+local killAuraEnabled = false
+local killAuraRange = 10
+local indicatorParts = {}
+
+-- Slider to control range
+CombatSection:AddSlider("KillAuraRange", {
+    Title = "Kill Aura Range",
+    Description = "How close players must be to be detected",
+    Default = 10,
+    Min = 5,
+    Max = 50,
+    Rounding = 1,
+    Callback = function(Value)
+        killAuraRange = Value
+    end
+})
+
+-- Toggle to enable Kill Aura detection (no auto attack)
+CombatSection:AddToggle("KillAura", {
+    Title = "Kill Aura",
+    Description = "Highlights nearby players in range",
+    Default = false,
+    Callback = function(Value)
+        killAuraEnabled = Value
+        if Value then
+            startKillAuraDetection()
+        else
+            clearIndicators()
+        end
+    end
+})
+
+-- Helper: Clear old indicators
+local function clearIndicators()
+    for _, part in pairs(indicatorParts) do
+        if part and part.Parent then
+            part:Destroy()
+        end
+    end
+    table.clear(indicatorParts)
+end
+
+-- Helper: Highlight a character's HumanoidRootPart
+local function highlightCharacter(char)
+    if not char:FindFirstChild("HumanoidRootPart") then return end
+
+    local highlight = Instance.new("SelectionBox")
+    highlight.Adornee = char.HumanoidRootPart
+    highlight.LineThickness = 0.05
+    highlight.Color3 = Color3.fromRGB(255, 0, 0)
+    highlight.SurfaceColor3 = Color3.fromRGB(255, 0, 0)
+    highlight.SurfaceTransparency = 0.8
+    highlight.Name = "KillAuraHighlight"
+    highlight.Parent = char.HumanoidRootPart
+    table.insert(indicatorParts, highlight)
+end
+
+-- Main detection loop
+function startKillAuraDetection()
+    spawn(function()
+        while killAuraEnabled do
+            clearIndicators()
+
+            local localPlayer = game.Players.LocalPlayer
+            local myPos = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and localPlayer.Character.HumanoidRootPart.Position
+
+            if myPos then
+                for _, player in pairs(game.Players:GetPlayers()) do
+                    if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local dist = (myPos - player.Character.HumanoidRootPart.Position).Magnitude
+                        if dist <= killAuraRange then
+                            highlightCharacter(player.Character)
+                        end
+                    end
+                end
+            end
+
+            wait(0.2)
+        end
+        clearIndicators()
+    end)
+end
+
+-- Kill Aura Function (FIXED)
 local function startKillAura()
     spawn(function()
         while killAuraEnabled do
-            local closestPlayer = getClosestPlayer()
-            if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                local args = {
-                    [1] = {
-                        [1] = closestPlayer.Character,
-                        [2] = closestPlayer.Character,
-                        [3] = closestPlayer.Character,
-                        [4] = closestPlayer.Character,
-                        [5] = closestPlayer.Character,
-                        [6] = closestPlayer.Character,
-                        [7] = closestPlayer.Character
+            local closestPlayer, distance = getClosestPlayer()
+            if closestPlayer and distance <= killAuraRange then
+                local char = closestPlayer.Character
+                if char then
+                    local args = {
+                        [1] = {
+                            [1] = char,
+                            [2] = char,
+                            [3] = char,
+                            [4] = char,
+                            [5] = char,
+                            [6] = char,
+                            [7] = char
+                        }
                     }
-                }
-                game:GetService("ReplicatedStorage").Events.SwingTool:FireServer(unpack(args))
+                    game:GetService("ReplicatedStorage").Events.SwingTool:FireServer(unpack(args))
+                end
             end
-            wait(0.01)
+            wait(0.05)
         end
     end)
 end
 
--- Connect toggles to functions
+-- Hook up toggles to functions
 Toggles.KillAura:OnChanged(function()
     if Toggles.KillAura.Value then
         startKillAura()

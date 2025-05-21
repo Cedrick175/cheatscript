@@ -547,36 +547,51 @@ end)
 -- Auto Pickup Section
 local AutoPickupSection = Tabs.Main:AddSection("Auto Pickup")
 
--- Variables for auto pickup
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Variables
 local autoPickupEnabled = false
 local pickupConnection = nil
+local pickupRadius = 10 -- distance to pick up items
 
--- Optimized Function to pickup items instantly
+-- Function to start auto pickup
 local function startAutoPickup()
     if pickupConnection then
         pickupConnection:Disconnect()
-        pickupConnection = nil
     end
 
-    local Event = game:GetService("ReplicatedStorage").Events.Pickup
-    local itemsFolder = game:GetService("Workspace"):WaitForChild("Important"):WaitForChild("Items")
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
 
-    pickupConnection = game:GetService("RunService").Heartbeat:Connect(function()
+    local Event = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Pickup")
+    local itemsFolder = workspace:WaitForChild("Important"):WaitForChild("Items")
+
+    pickupConnection = RunService.Heartbeat:Connect(function()
         if not autoPickupEnabled then return end
+        character = player.Character or player.CharacterAdded:Wait()
+        hrp = character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
 
         for _, item in ipairs(itemsFolder:GetChildren()) do
             if not autoPickupEnabled then break end
-            if item:FindFirstChild("Pickup") then
-                Event:InvokeServer(item)
+            if item:FindFirstChild("Pickup") and item:IsA("BasePart") then
+                local distance = (hrp.Position - item.Position).Magnitude
+                if distance <= pickupRadius then
+                    Event:InvokeServer(item)
+                end
             end
         end
     end)
 end
 
--- Auto Pickup Toggle
+-- Toggle to enable/disable auto pickup
 AutoPickupSection:AddToggle("AutoPickup", {
     Title = "Auto Pickup",
-    Description = "Automatically pickup all items",
+    Description = "Automatically picks up nearby items",
     Default = false,
     Callback = function(Value)
         autoPickupEnabled = Value
@@ -591,28 +606,14 @@ AutoPickupSection:AddToggle("AutoPickup", {
     end
 })
 
--- Clean up on script end
-game.Players.LocalPlayer.CharacterRemoving:Connect(function()
+-- Disconnect on character removal
+Players.LocalPlayer.CharacterRemoving:Connect(function()
     if pickupConnection then
         pickupConnection:Disconnect()
         pickupConnection = nil
     end
 end)
 
--- Cache frequently used services
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- Cache services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- Cache frequently used services
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Cache services
 local UserInputService = game:GetService("UserInputService")
